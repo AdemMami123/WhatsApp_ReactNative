@@ -21,7 +21,7 @@ export default function NewAccount({ navigation }) {
   return (
     <ImageBackground
       style={styles.container}
-      source={require("../assets/favicon.png")}
+      source={require("../assets/walpaper.jpg")}
     >
       <View
         style={{
@@ -93,8 +93,8 @@ export default function NewAccount({ navigation }) {
                       id: currentUserId,
                       email: userEmail,
                       pseudo: userEmail ? userEmail.split('@')[0] : 'New User', // Default username from email
-                      numero: '', // Empty phone number initially
-                      isOnline: true // Mark as online on registration
+                      numero: '' // Empty phone number initially
+                      // Removed isOnline field
                     })
                     .then(() => {
                       console.log("User profile created in ListComptes");

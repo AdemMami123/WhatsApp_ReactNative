@@ -21,6 +21,7 @@ export default function Home({ route }) {
   useEffect(() => {
     if (!currentUserId) {
       console.error("[Home.js] No currentUserId provided");
+      setIsLoading(false);
       return;
     }
 
@@ -41,18 +42,12 @@ export default function Home({ route }) {
               id: currentUserId,
               email: currentUser.email,
               pseudo: currentUser.email ? currentUser.email.split('@')[0] : 'User',
-              numero: '',
-              isOnline: true
+              numero: ''
             });
             console.log("[Home.js] Created entry for current user:", currentUserId);
           }
         } else {
-          // Update online status for existing user
-          await ref_listcomptes.child(currentUserId).update({ 
-            isOnline: true,
-            lastLogin: Date.now()
-          });
-          console.log("[Home.js] Updated online status for current user:", currentUserId);
+          console.log("[Home.js] User already exists in ListComptes:", currentUserId);
         }
       } catch (error) {
         console.error("[Home.js] Error syncing current user:", error);
@@ -62,13 +57,6 @@ export default function Home({ route }) {
     };
 
     syncCurrentUserToListComptes();
-
-    return () => {
-      if (currentUserId) {
-        ref_listcomptes.child(currentUserId).update({ isOnline: false })
-          .catch(err => console.error("[Home.js] Error setting user offline:", err));
-      }
-    };
   }, [currentUserId]);
 
   if (isLoading) {

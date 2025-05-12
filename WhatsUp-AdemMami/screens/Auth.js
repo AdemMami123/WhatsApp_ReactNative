@@ -82,15 +82,10 @@ export default function Auth({ navigation }) {
                           id: currentUserId,
                           email: userEmail,
                           pseudo: userEmail ? userEmail.split('@')[0] : 'New User',
-                          numero: '',
-                          isOnline: true
-                        });
-                      } else {
-                        console.log("Updating existing user status:", currentUserId);
-                        return ref_listcomptes.child(currentUserId).update({ 
-                          isOnline: true 
+                          numero: ''
                         });
                       }
+                      return Promise.resolve();
                     })
                     .then(() => {
                       navigation.replace("Home", {currentUserId});

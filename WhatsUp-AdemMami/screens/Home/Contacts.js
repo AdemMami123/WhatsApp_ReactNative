@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
-import firebase from '../../Config'; // Adjust path as needed
-import { Avatar } from 'react-native-paper'; // Optional: for user avatars
+import firebase from '../../Config';
+import { Avatar } from 'react-native-paper';
 
 const database = firebase.database();
 
@@ -72,14 +72,14 @@ export default function Contacts({ navigation, route }) {
       <Avatar.Text size={40} label={item.pseudo ? item.pseudo.charAt(0).toUpperCase() : '?'} style={styles.avatar} />
       <View style={styles.textContainer}>
         <Text style={styles.pseudo}>{item.pseudo || 'N/A'}</Text>
-        <Text style={styles.status}>{item.isOnline ? 'Online' : 'Offline'}</Text>
+        <Text style={styles.phone}>{item.numero || 'No phone number'}</Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
     <ImageBackground
-      source={require('../../assets/walpaper.jpg')} // Adjust path as needed
+      source={require('../../assets/walpaper.jpg')}
       style={styles.container}
     >
       {contacts.length === 0 ? (
@@ -132,9 +132,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  status: {
-    fontSize: 12,
+  phone: {
+    fontSize: 14,
     color: '#666',
+    marginTop: 4,
   },
   emptyContainer: {
     flex: 1,

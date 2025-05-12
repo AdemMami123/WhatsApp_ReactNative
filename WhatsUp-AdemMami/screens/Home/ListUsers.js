@@ -27,7 +27,7 @@ export default function ListUsers({ navigation, route }) {
   const [userContacts, setUserContacts] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // Update user's online status on mount and fetch contacts
+  // Update user's contacts and fetch all users
   useEffect(() => {
     console.log("[ListUsers.js] useEffect running, currentUserId:", currentUserId);
     
@@ -36,10 +36,6 @@ export default function ListUsers({ navigation, route }) {
       setLoading(false);
       return;
     }
-
-    // Set user as online
-    ref_listcomptes.child(currentUserId).update({ isOnline: true })
-      .catch(error => console.error("[ListUsers.js] Error updating online status:", error));
 
     // Fetch current user's contacts
     const currentUserContactsRef = ref_contacts.child(currentUserId);
@@ -87,8 +83,6 @@ export default function ListUsers({ navigation, route }) {
     // Clean up listeners on unmount
     return () => {
       console.log("[ListUsers.js] Cleaning up listeners");
-      
-      // No need to update isOnline here as it's handled in Home.js on unmount
       
       if (currentUserId) {
         currentUserContactsRef.off('value', contactsListener);
@@ -166,7 +160,6 @@ export default function ListUsers({ navigation, route }) {
               })}>
                 <Image source={require("../../assets/favicon.png")} style={styles.avatar} />
               </TouchableOpacity>
-              <View style={[styles.statusIndicator, { backgroundColor: item.isOnline ? '#4CAF50' : '#9E9E9E' }]} />
             </View>
 
             <View style={styles.textContainer}>
@@ -183,9 +176,6 @@ export default function ListUsers({ navigation, route }) {
               >
                 <Text style={styles.numero}>{item.numero || 'No phone number'}</Text>
               </TouchableOpacity>
-              <Text style={styles.statusText}>
-                {item.isOnline ? 'Online' : 'Offline'}
-              </Text>
             </View>
 
             <TouchableOpacity
@@ -246,16 +236,6 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
   },
-  statusIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: 'white',
-  },
   textContainer: {
     flex: 1,
     marginRight: 10,
@@ -270,11 +250,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#007bff",
     marginTop: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#616161',
-    marginTop: 2,
   },
   messageButton: {
     padding: 8,

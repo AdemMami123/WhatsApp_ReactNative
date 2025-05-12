@@ -37,12 +37,11 @@ export default function Setting({ navigation, route }) {
     }
 
     const ref_uncompte = ref_listcomptes.child(currentUserId);
-    // Update online status along with user info
-    ref_uncompte.set({ 
+    // Update user info without online status
+    ref_uncompte.update({ 
       id: currentUserId, 
       pseudo, 
-      numero, 
-      isOnline: true 
+      numero
     });
     alert("Profile updated successfully");
   };
@@ -77,27 +76,10 @@ export default function Setting({ navigation, route }) {
       <Button
         mode="outlined"
         onPress={() => {
-          // Update user status to offline before signing out
-          if (currentUserId) {
-            ref_listcomptes.child(currentUserId).update({ isOnline: false })
-              .then(() => {
-                auth.signOut().then(() => {
-                  navigation.replace("Auth"); // Changed to replace
-                });
-              })
-              .catch(error => {
-                console.error("Error updating online status: ", error);
-                // Still attempt to sign out and navigate
-                auth.signOut().then(() => {
-                  navigation.replace("Auth"); // Changed to replace
-                });
-              });
-          } else {
-            // If currentUserId is somehow not available, still attempt to sign out
-            auth.signOut().then(() => {
-              navigation.replace("Auth"); // Changed to replace
-            });
-          }
+          // Simply sign out without updating online status
+          auth.signOut().then(() => {
+            navigation.replace("Auth"); // Changed to replace
+          });
         }}
         style={styles.logoutButton}
       >
