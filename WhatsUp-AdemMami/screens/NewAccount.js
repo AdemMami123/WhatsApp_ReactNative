@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import firebase from "../Config";
 const auth = firebase.auth();
+const database = firebase.database(); // Add database reference
 
 export default function NewAccount({ navigation }) {
   const [email, setemail] = useState("");
@@ -79,9 +80,32 @@ export default function NewAccount({ navigation }) {
               if (password === confirmpassword) {
                 auth
                   .createUserWithEmailAndPassword(email, password)
-                  .then(() => {
-                    const currentUserId = auth.currentUser.uid;
-                    navigation.replace("Home", {currentUserId});
+                  .then((userCredential) => {
+                    // Get the user ID from the credential
+                    const currentUserId = userCredential.user.uid;
+                    const userEmail = userCredential.user.email;
+                    
+                    // Create a reference to ListComptes node
+                    const ref_listcomptes = database.ref("ListComptes");
+                    
+                    // Add the new user to ListComptes with the same UID as in Authentication
+                    ref_listcomptes.child(currentUserId).set({
+                      id: currentUserId,
+                      email: userEmail,
+                      pseudo: userEmail ? userEmail.split('@')[0] : 'New User', // Default username from email
+                      numero: '', // Empty phone number initially
+                      isOnline: true // Mark as online on registration
+                    })
+                    .then(() => {
+                      console.log("User profile created in ListComptes");
+                      navigation.replace("Home", {currentUserId});
+                    })
+                    .catch((dbError) => {
+                      console.error("Error creating user profile:", dbError);
+                      Alert.alert("Error", "Account created but profile setup failed: " + dbError.message);
+                      // Still navigate to Home despite the DB error
+                      navigation.replace("Home", {currentUserId});
+                    });
                   })
                   .catch((err) => {
                     Alert.alert("Error", err.message);

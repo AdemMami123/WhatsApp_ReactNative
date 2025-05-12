@@ -9,43 +9,144 @@ import {
   TouchableOpacity,
   Linking,
   Platform,
+  ActivityIndicator,
 } from "react-native";
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import firebase from "../../Config";
 
 const database = firebase.database();
 const ref_listcomptes = database.ref("ListComptes");
+const ref_contacts = database.ref("Contacts");
 
 export default function ListUsers({ navigation, route }) {
   const currentUserId = route.params?.currentUserId;
+  
+  console.log("[ListUsers.js] Component mounted with currentUserId:", currentUserId);
+  
   const [data, setData] = useState([]);
+  const [userContacts, setUserContacts] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  // Update user's online status on mount
+  // Update user's online status on mount and fetch contacts
   useEffect(() => {
-    if (currentUserId) {
-      ref_listcomptes.child(currentUserId).update({ isOnline: true });
+    console.log("[ListUsers.js] useEffect running, currentUserId:", currentUserId);
+    
+    if (!currentUserId) {
+      console.error("[ListUsers.js] No currentUserId provided, cannot filter users");
+      setLoading(false);
+      return;
     }
 
-    // Set up listener for other users
-    ref_listcomptes.on("value", (snapshot) => {
-      const d = [];
-      snapshot.forEach(un_compte => {
-        if (un_compte.val().id !== currentUserId) {
-          d.push(un_compte.val());
-        }
-      });
-      setData(d);
+    // Set user as online
+    ref_listcomptes.child(currentUserId).update({ isOnline: true })
+      .catch(error => console.error("[ListUsers.js] Error updating online status:", error));
+
+    // Fetch current user's contacts
+    const currentUserContactsRef = ref_contacts.child(currentUserId);
+    const contactsListener = currentUserContactsRef.on('value', snapshot => {
+      console.log("[ListUsers.js] Contacts snapshot received:", snapshot.val());
+      setUserContacts(snapshot.val() || {});
+    }, error => {
+      console.error("[ListUsers.js] Error fetching contacts:", error);
     });
 
-    // Clean up on unmount
+    // Set up listener for users, explicitly filtering out the current user
+    const usersListener = ref_listcomptes.on("value", (snapshot) => {
+      console.log("[ListUsers.js] Users snapshot received, filtering with currentUserId:", currentUserId);
+      
+      const filteredUsers = [];
+      let totalUsers = 0;
+      let filteredCount = 0;
+      
+      snapshot.forEach(un_compte => {
+        totalUsers++;
+        const userData = un_compte.val();
+        const userId = un_compte.key;
+        
+        console.log(`[ListUsers.js] Processing user: ${userId} (${userData.pseudo || 'unnamed'})`);
+        console.log(`[ListUsers.js] Comparing with currentUserId: ${currentUserId}`);
+        
+        if (userId !== currentUserId) {
+          filteredUsers.push({ ...userData, id: userId });
+        } else {
+          filteredCount++;
+          console.log(`[ListUsers.js] Filtered out current user: ${userId}`);
+        }
+      });
+      
+      console.log(`[ListUsers.js] Found ${totalUsers} total users, filtered out ${filteredCount} (current user)`);
+      console.log(`[ListUsers.js] Setting data with ${filteredUsers.length} users`);
+      
+      setData(filteredUsers);
+      setLoading(false);
+    }, error => {
+      console.error("[ListUsers.js] Error fetching users:", error);
+      setLoading(false);
+    });
+
+    // Clean up listeners on unmount
     return () => {
+      console.log("[ListUsers.js] Cleaning up listeners");
+      
+      // No need to update isOnline here as it's handled in Home.js on unmount
+      
       if (currentUserId) {
-        // Don't update online status on unmount, as this might just be navigating to chat
-        // Only update status on logout (in Settings screen)
+        currentUserContactsRef.off('value', contactsListener);
       }
-      ref_listcomptes.off("value");
+      ref_listcomptes.off("value", usersListener);
     };
   }, [currentUserId]);
+
+  // Function to add or remove a user from contacts
+  const toggleContact = (contactId) => {
+    console.log("[ListUsers.js] toggleContact called with contactId:", contactId); 
+    if (!currentUserId) {
+      console.error("[ListUsers.js] toggleContact: currentUserId is undefined");
+      return;
+    }
+    if (!contactId) {
+      console.error("[ListUsers.js] toggleContact: contactId is undefined");
+      return;
+    }
+    console.log("[ListUsers.js] Current userContacts state before action:", userContacts);
+    const currentUserContactEntryRef = ref_contacts.child(currentUserId).child(contactId);
+
+    if (userContacts[contactId]) {
+      console.log("[ListUsers.js] Attempting to remove contact:", contactId);
+      currentUserContactEntryRef.remove()
+        .then(() => console.log("[ListUsers.js] Contact removed successfully from Firebase:", contactId))
+        .catch(error => console.error("[ListUsers.js] Error removing contact from Firebase:", error));
+    } else {
+      console.log("[ListUsers.js] Attempting to add contact:", contactId);
+      currentUserContactEntryRef.set(true)
+        .then(() => console.log("[ListUsers.js] Contact added successfully to Firebase:", contactId))
+        .catch(error => console.error("[ListUsers.js] Error adding contact to Firebase:", error));
+    }
+  };
+
+  // Show loading indicator
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6974d6" />
+        <Text>Loading users...</Text>
+      </View>
+    );
+  }
+  
+  // Show no users message if empty
+  if (data.length === 0) {
+    return (
+      <ImageBackground
+        source={require("../../assets/walpaper.jpg")}
+        style={styles.container}
+      >
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No other users found</Text>
+        </View>
+      </ImageBackground>
+    );
+  }
 
   return (
     <ImageBackground
@@ -54,7 +155,7 @@ export default function ListUsers({ navigation, route }) {
     >
       <FlatList
         data={data}
-        keyExtractor={(item, index) => item.id || index.toString()}
+        keyExtractor={(item) => item.id || Math.random().toString()}
         contentContainerStyle={styles.listContainer}
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -86,6 +187,17 @@ export default function ListUsers({ navigation, route }) {
                 {item.isOnline ? 'Online' : 'Offline'}
               </Text>
             </View>
+
+            <TouchableOpacity
+              style={styles.contactButton}
+              onPress={() => toggleContact(item.id)}
+            >
+              <Ionicons 
+                name={userContacts[item.id] ? "person-remove" : "person-add"} 
+                size={24} 
+                color={userContacts[item.id] ? "#FF7F7F" : "#4CAF50"} 
+              />
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.messageButton}
@@ -146,11 +258,13 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     flex: 1,
+    marginRight: 10,
   },
   pseudo: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+    marginTop: 2,
   },
   numero: {
     fontSize: 16,
@@ -166,5 +280,26 @@ const styles = StyleSheet.create({
     padding: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  contactButton: {
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#616161',
   },
 });

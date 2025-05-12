@@ -53,8 +53,8 @@ export default function Chat({ route, navigation }) {
         });
     }
     
-    // Listen for messages
-    ref_undiscussion.on('value', snapshot => {
+    // Define the listener callback
+    const messageListenerCallback = snapshot => {
       const messageList = [];
       if (snapshot.exists()) {
         snapshot.forEach(childSnapshot => {
@@ -66,14 +66,21 @@ export default function Chat({ route, navigation }) {
         // Sort messages by timestamp
         messageList.sort((a, b) => a.timestamp - b.timestamp);
         setMessages(messageList);
+      } else {
+        // If the discussion node doesn't exist or is empty, clear local messages.
+        setMessages([]);
       }
-    });
+    };
+    
+    // Attach the listener
+    ref_undiscussion.on('value', messageListenerCallback);
     
     // Clean up listeners
     return () => {
-      ref_undiscussion.off('value');
+      // Detach the specific listener
+      ref_undiscussion.off('value', messageListenerCallback);
     };
-  }, [currentUserId, secondUserId, navigation]);
+  }, [currentUserId, secondUserId, navigation, ref_undiscussion]); // Added ref_undiscussion to dependencies
   
   // Send message function
   const handleSend = () => {

@@ -7,10 +7,12 @@ import {
   Button,
   ImageBackground,
   BackHandler,
+  Alert,
 } from "react-native";
 import { useState } from "react";
 import firebase from "../Config";
 const auth = firebase.auth();
+const database = firebase.database();
 
 export default function Auth({ navigation }) {
   const [email, setemail] = useState("ademmami92@gmail.com");
@@ -67,9 +69,37 @@ export default function Auth({ navigation }) {
             onPress={() => {
               auth
                 .signInWithEmailAndPassword(email, password)
-                .then(() => {
-                  const currentUserId = auth.currentUser.uid;
-                  navigation.navigate("Home", {currentUserId});
+                .then((userCredential) => {
+                  const currentUserId = userCredential.user.uid;
+                  const userEmail = userCredential.user.email;
+                  const ref_listcomptes = database.ref("ListComptes");
+
+                  ref_listcomptes.child(currentUserId).once("value")
+                    .then(snapshot => {
+                      if (!snapshot.exists()) {
+                        console.log("Creating new ListComptes entry for user:", currentUserId);
+                        return ref_listcomptes.child(currentUserId).set({
+                          id: currentUserId,
+                          email: userEmail,
+                          pseudo: userEmail ? userEmail.split('@')[0] : 'New User',
+                          numero: '',
+                          isOnline: true
+                        });
+                      } else {
+                        console.log("Updating existing user status:", currentUserId);
+                        return ref_listcomptes.child(currentUserId).update({ 
+                          isOnline: true 
+                        });
+                      }
+                    })
+                    .then(() => {
+                      navigation.replace("Home", {currentUserId});
+                    })
+                    .catch(error => {
+                      console.error("Database error:", error);
+                      Alert.alert("Warning", "Signed in successfully, but couldn't update profile.");
+                      navigation.replace("Home", {currentUserId});
+                    });
                 })
                 .catch((error) => {
                   console.log(error);

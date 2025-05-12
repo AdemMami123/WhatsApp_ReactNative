@@ -82,12 +82,20 @@ export default function Setting({ navigation, route }) {
             ref_listcomptes.child(currentUserId).update({ isOnline: false })
               .then(() => {
                 auth.signOut().then(() => {
-                  navigation.navigate("Auth");
+                  navigation.replace("Auth"); // Changed to replace
+                });
+              })
+              .catch(error => {
+                console.error("Error updating online status: ", error);
+                // Still attempt to sign out and navigate
+                auth.signOut().then(() => {
+                  navigation.replace("Auth"); // Changed to replace
                 });
               });
           } else {
+            // If currentUserId is somehow not available, still attempt to sign out
             auth.signOut().then(() => {
-              navigation.navigate("Auth");
+              navigation.replace("Auth"); // Changed to replace
             });
           }
         }}
