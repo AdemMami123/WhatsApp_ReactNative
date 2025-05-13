@@ -9,31 +9,41 @@ const ref_database = database.ref();
 const ref_lesdiscussions = ref_database.child("LesDiscussions");
 const ref_listcomptes = ref_database.child("ListComptes");
 
+// my message status 
+const MessageStatus = ({ status }) => {
+  let iconName = "check";
+  let iconColor = "#bbb";
+  
+  if (status === "delivered") {
+    iconName = "check-all";
+    iconColor = "#bbb";
+  } else if (status === "read") {
+    iconName = "check-all";
+    iconColor = "#5cb3ff";
+  }
+  
+  return <MaterialCommunityIcons name={iconName} size={14} color={iconColor} />;
+};
+
 export default function Chat({ route, navigation }) {
-  // Get user IDs from route params
   const currentUserId = route.params?.currentUserId;
   const secondUserId = route.params?.secondUserId;
   
-  // State for messages and user data
   const [messages, setMessages] = useState([]);
   const [msg, setMsg] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
   const [secondUserName, setSecondUserName] = useState('');
   
-  // State for message options menu
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
   
-  // Create a unique discussion ID
   const idDesc = currentUserId > secondUserId ? 
     currentUserId + secondUserId : 
     secondUserId + currentUserId;
   
   const ref_undiscussion = ref_lesdiscussions.child(idDesc);
   
-  // Fetch user names from database
   useEffect(() => {
-    // Fetch current user info
     if (currentUserId) {
       ref_listcomptes.child(currentUserId).once('value')
         .then(snapshot => {
@@ -43,13 +53,11 @@ export default function Chat({ route, navigation }) {
         });
     }
     
-    // Fetch second user info
     if (secondUserId) {
       ref_listcomptes.child(secondUserId).once('value')
         .then(snapshot => {
           if (snapshot.exists()) {
             setSecondUserName(snapshot.val().pseudo || 'Other User');
-            // Set the title of the navigation header
             navigation.setOptions({
               title: snapshot.val().pseudo || 'Chat',
               headerShown: true
@@ -58,7 +66,6 @@ export default function Chat({ route, navigation }) {
         });
     }
     
-    // Define the listener callback
     const messageListenerCallback = snapshot => {
       const messageList = [];
       if (snapshot.exists()) {
@@ -68,39 +75,34 @@ export default function Chat({ route, navigation }) {
             ...childSnapshot.val()
           });
         });
-        // Sort messages by timestamp
         messageList.sort((a, b) => a.timestamp - b.timestamp);
         setMessages(messageList);
       } else {
-        // If the discussion node doesn't exist or is empty, clear local messages.
         setMessages([]);
       }
     };
     
-    // Attach the listener
     ref_undiscussion.on('value', messageListenerCallback);
     
-    // Clean up listeners
     return () => {
-      // Detach the specific listener
       ref_undiscussion.off('value', messageListenerCallback);
     };
-  }, [currentUserId, secondUserId, navigation, ref_undiscussion]); // Added ref_undiscussion to dependencies
+  }, [currentUserId, secondUserId, navigation, ref_undiscussion]);
   
-  // Send message function
   const handleSend = () => {
     if (msg.trim() === '') return;
     
     const messageData = {
       sender: currentUserId,
       text: msg,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      status: "sent"
     };
     
     ref_undiscussion.push(messageData)
       .then(() => {
         console.log('Message sent successfully');
-        setMsg(''); // Clear input after sending
+        setMsg('');
       })
       .catch(error => {
         console.error('Error sending message:', error);
@@ -108,7 +110,6 @@ export default function Chat({ route, navigation }) {
       });
   };
 
-  // Handle long press on a message
   const handleLongPress = (message) => {
     if (message.sender === currentUserId) {
       setSelectedMessage(message);
@@ -116,13 +117,11 @@ export default function Chat({ route, navigation }) {
     }
   };
 
-  // Close menu
   const closeMenu = () => {
     setMenuVisible(false);
     setSelectedMessage(null);
   };
 
-  // Delete message function
   const deleteMessage = () => {
     if (!selectedMessage) return;
     
@@ -139,7 +138,6 @@ export default function Chat({ route, navigation }) {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            // Delete the message from Firebase
             const messageRef = ref_undiscussion.child(selectedMessage.id);
             messageRef.remove()
               .then(() => {
@@ -157,7 +155,6 @@ export default function Chat({ route, navigation }) {
     );
   };
   
-  // Render individual message item
   const renderMessage = ({ item }) => {
     const isCurrentUser = item.sender === currentUserId;
     const isSelected = selectedMessage && selectedMessage.id === item.id;
@@ -187,6 +184,7 @@ export default function Chat({ route, navigation }) {
             <Text style={styles.timestampText}>
               {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
             </Text>
+            {isCurrentUser && <MessageStatus status={item.status} />}
           </View>
           {isCurrentUser && <View style={styles.spacer} />}
         </View>
@@ -280,7 +278,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#6974d6',
   },
   spacer: {
-    width: 35, // Same width as avatar to balance the layout
+    width: 35,
   },
   messageBubble: {
     maxWidth: '70%',
@@ -291,16 +289,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     backgroundColor: '#DCF8C6',
     borderBottomRightRadius: 0,
-    marginLeft: 'auto', // Push to the right side
+    marginLeft: 'auto',
   },
   otherUserMessage: {
     alignSelf: 'flex-start',
     backgroundColor: '#fff',
     borderBottomLeftRadius: 0,
-    marginRight: 'auto', // Push to the left side
+    marginRight: 'auto',
   },
   selectedMessage: {
-    backgroundColor: '#b7f0a1', // Highlight color when selected
+    backgroundColor: '#b7f0a1',
   },
   messageText: {
     fontSize: 16,

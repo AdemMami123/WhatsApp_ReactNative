@@ -4,17 +4,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
 
-// Import screens
 import Auth from './screens/Auth';
 import NewAccount from './screens/NewAccount';
 import Home from './screens/Home';
 import Chat from './screens/Chat';
 import Setting from './screens/Home/Setting';
 
-// Import Firebase config
 import firebase from './Config';
 
-// Ignore specific Firebase warnings
 LogBox.ignoreLogs([
   'Setting a timer',
   'AsyncStorage has been extracted',
@@ -24,14 +21,11 @@ LogBox.ignoreLogs([
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  // Set up database presences to track online status
   useEffect(() => {
-    // Reference to the Firebase database
     const database = firebase.database();
     const connectedRef = database.ref('.info/connected');
 
     const handleConnectionChange = (snapshot) => {
-      // When we connect or disconnect, update our connection status
       if (snapshot.val() === true) {
         console.log('Connected to Firebase');
       } else {
@@ -63,7 +57,7 @@ export default function App() {
           name="Chat" 
           component={Chat}
           options={{
-            headerShown: false // We manage this in the component itself
+            headerShown: false
           }}
         />
         <Stack.Screen name="Setting" component={Setting} />

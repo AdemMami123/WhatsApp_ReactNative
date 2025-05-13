@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import firebase from "../Config";
 const auth = firebase.auth();
-const database = firebase.database(); // Add database reference
+const database = firebase.database();
 
 export default function NewAccount({ navigation }) {
   const [email, setemail] = useState("");
@@ -81,20 +81,16 @@ export default function NewAccount({ navigation }) {
                 auth
                   .createUserWithEmailAndPassword(email, password)
                   .then((userCredential) => {
-                    // Get the user ID from the credential
                     const currentUserId = userCredential.user.uid;
                     const userEmail = userCredential.user.email;
                     
-                    // Create a reference to ListComptes node
                     const ref_listcomptes = database.ref("ListComptes");
                     
-                    // Add the new user to ListComptes with the same UID as in Authentication
                     ref_listcomptes.child(currentUserId).set({
                       id: currentUserId,
                       email: userEmail,
-                      pseudo: userEmail ? userEmail.split('@')[0] : 'New User', // Default username from email
-                      numero: '' // Empty phone number initially
-                      // Removed isOnline field
+                      pseudo: userEmail ? userEmail.split('@')[0] : 'New User',
+                      numero: ''
                     })
                     .then(() => {
                       console.log("User profile created in ListComptes");
@@ -103,7 +99,6 @@ export default function NewAccount({ navigation }) {
                     .catch((dbError) => {
                       console.error("Error creating user profile:", dbError);
                       Alert.alert("Error", "Account created but profile setup failed: " + dbError.message);
-                      // Still navigate to Home despite the DB error
                       navigation.replace("Home", {currentUserId});
                     });
                   })

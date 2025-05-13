@@ -28,12 +28,10 @@ export default function Home({ route }) {
     const syncCurrentUserToListComptes = async () => {
       console.log("[Home.js] Starting sync of current user with ListComptes");
       try {
-        // First, get all existing entries in ListComptes
         const listComptesSnapshot = await ref_listcomptes.once('value');
         const existingEntries = listComptesSnapshot.val() || {};
         console.log("[Home.js] Existing entries in ListComptes:", Object.keys(existingEntries));
 
-        // Make sure current user has an entry
         if (!existingEntries[currentUserId]) {
           console.log("[Home.js] Creating missing entry for current user:", currentUserId);
           const currentUser = auth.currentUser;
@@ -81,7 +79,7 @@ export default function Home({ route }) {
         }}
       />
       <Tab.Screen
-        name="Contacts"
+        name="Favorite Contacts"
         component={Contacts}
         initialParams={{ currentUserId }}
         options={{

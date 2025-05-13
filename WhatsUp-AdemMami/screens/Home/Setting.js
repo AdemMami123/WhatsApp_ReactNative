@@ -10,14 +10,12 @@ const ref_database = database.ref();
 const ref_listcomptes = ref_database.child("ListComptes");
 
 export default function Setting({ navigation, route }) {
-  // Get current user ID from route params
   const currentUserId = route.params?.currentUserId;
 
   const [pseudo, setPseudo] = useState("");
   const [numero, setNumero] = useState("");
   const [uriImage, setUriImage] = useState("");
 
-  // Load user data if it exists
   useEffect(() => {
     if (currentUserId) {
       const ref_uncompte = ref_listcomptes.child(currentUserId);
@@ -39,7 +37,6 @@ export default function Setting({ navigation, route }) {
   }, [currentUserId]);
 
   const pickImage = async () => {
-    // Request permission to access the media library
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (permissionResult.granted === false) {
@@ -47,7 +44,6 @@ export default function Setting({ navigation, route }) {
       return;
     }
     
-    // Launch image picker
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -61,7 +57,6 @@ export default function Setting({ navigation, route }) {
   };
 
   const handleSave = () => {
-    // Check if currentUserId is valid before proceeding
     if (!currentUserId) {
       console.error("User ID is undefined");
       alert("Error: User ID is missing");
@@ -69,7 +64,6 @@ export default function Setting({ navigation, route }) {
     }
 
     const ref_uncompte = ref_listcomptes.child(currentUserId);
-    // Update user info with image URL if available
     ref_uncompte.update({ 
       id: currentUserId, 
       pseudo, 

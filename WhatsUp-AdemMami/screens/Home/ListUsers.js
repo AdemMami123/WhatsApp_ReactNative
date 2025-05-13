@@ -21,35 +21,23 @@ const ref_contacts = database.ref("Contacts");
 export default function ListUsers({ navigation, route }) {
   const currentUserId = route.params?.currentUserId;
   
-  console.log("[ListUsers.js] Component mounted with currentUserId:", currentUserId);
-  
   const [data, setData] = useState([]);
   const [userContacts, setUserContacts] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // Update user's contacts and fetch all users
   useEffect(() => {
-    console.log("[ListUsers.js] useEffect running, currentUserId:", currentUserId);
-    
     if (!currentUserId) {
-      console.error("[ListUsers.js] No currentUserId provided, cannot filter users");
       setLoading(false);
       return;
     }
 
-    // Fetch current user's contacts
     const currentUserContactsRef = ref_contacts.child(currentUserId);
     const contactsListener = currentUserContactsRef.on('value', snapshot => {
-      console.log("[ListUsers.js] Contacts snapshot received:", snapshot.val());
       setUserContacts(snapshot.val() || {});
     }, error => {
-      console.error("[ListUsers.js] Error fetching contacts:", error);
     });
 
-    // Set up listener for users, explicitly filtering out the current user
     const usersListener = ref_listcomptes.on("value", (snapshot) => {
-      console.log("[ListUsers.js] Users snapshot received, filtering with currentUserId:", currentUserId);
-      
       const filteredUsers = [];
       let totalUsers = 0;
       let filteredCount = 0;
@@ -59,31 +47,20 @@ export default function ListUsers({ navigation, route }) {
         const userData = un_compte.val();
         const userId = un_compte.key;
         
-        console.log(`[ListUsers.js] Processing user: ${userId} (${userData.pseudo || 'unnamed'})`);
-        console.log(`[ListUsers.js] Comparing with currentUserId: ${currentUserId}`);
-        
         if (userId !== currentUserId) {
           filteredUsers.push({ ...userData, id: userId });
         } else {
           filteredCount++;
-          console.log(`[ListUsers.js] Filtered out current user: ${userId}`);
         }
       });
-      
-      console.log(`[ListUsers.js] Found ${totalUsers} total users, filtered out ${filteredCount} (current user)`);
-      console.log(`[ListUsers.js] Setting data with ${filteredUsers.length} users`);
       
       setData(filteredUsers);
       setLoading(false);
     }, error => {
-      console.error("[ListUsers.js] Error fetching users:", error);
       setLoading(false);
     });
 
-    // Clean up listeners on unmount
     return () => {
-      console.log("[ListUsers.js] Cleaning up listeners");
-      
       if (currentUserId) {
         currentUserContactsRef.off('value', contactsListener);
       }
@@ -91,34 +68,26 @@ export default function ListUsers({ navigation, route }) {
     };
   }, [currentUserId]);
 
-  // Function to add or remove a user from contacts
   const toggleContact = (contactId) => {
-    console.log("[ListUsers.js] toggleContact called with contactId:", contactId); 
     if (!currentUserId) {
-      console.error("[ListUsers.js] toggleContact: currentUserId is undefined");
       return;
     }
     if (!contactId) {
-      console.error("[ListUsers.js] toggleContact: contactId is undefined");
       return;
     }
-    console.log("[ListUsers.js] Current userContacts state before action:", userContacts);
     const currentUserContactEntryRef = ref_contacts.child(currentUserId).child(contactId);
 
     if (userContacts[contactId]) {
-      console.log("[ListUsers.js] Attempting to remove contact:", contactId);
       currentUserContactEntryRef.remove()
-        .then(() => console.log("[ListUsers.js] Contact removed successfully from Firebase:", contactId))
-        .catch(error => console.error("[ListUsers.js] Error removing contact from Firebase:", error));
+        .then(() => {})
+        .catch(error => {});
     } else {
-      console.log("[ListUsers.js] Attempting to add contact:", contactId);
       currentUserContactEntryRef.set(true)
-        .then(() => console.log("[ListUsers.js] Contact added successfully to Firebase:", contactId))
-        .catch(error => console.error("[ListUsers.js] Error adding contact to Firebase:", error));
+        .then(() => {})
+        .catch(error => {});
     }
   };
 
-  // Show loading indicator
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -128,7 +97,6 @@ export default function ListUsers({ navigation, route }) {
     );
   }
   
-  // Show no users message if empty
   if (data.length === 0) {
     return (
       <ImageBackground
@@ -158,7 +126,7 @@ export default function ListUsers({ navigation, route }) {
                 currentUserId, 
                 secondUserId: item.id 
               })}>
-                <Image source={require("../../assets/favicon.png")} style={styles.avatar} />
+                <Image source={require("../../assets/profile.jpg")} style={styles.avatar} />
               </TouchableOpacity>
             </View>
 

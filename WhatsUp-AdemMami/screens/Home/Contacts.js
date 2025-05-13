@@ -8,26 +8,20 @@ const database = firebase.database();
 export default function Contacts({ navigation, route }) {
   const currentUserId = route.params?.currentUserId;
   const [contacts, setContacts] = useState([]);
-  console.log("[Contacts.js] currentUserId:", currentUserId);
 
   useEffect(() => {
     if (!currentUserId) {
-      console.log("[Contacts.js] useEffect: currentUserId is null or undefined, returning.");
       return;
     }
-    console.log(`[Contacts.js] useEffect: Attaching listener to Contacts/${currentUserId}`);
     const contactsRef = database.ref(`Contacts/${currentUserId}`);
     
     const listener = contactsRef.on('value', async (snapshot) => {
       const contactsData = snapshot.val();
-      console.log("[Contacts.js] Firebase contacts listener triggered. contactsData:", contactsData);
 
       if (contactsData) {
         const contactIds = Object.keys(contactsData);
-        console.log("[Contacts.js] Extracted contactIds:", contactIds);
 
         if (contactIds.length === 0) {
-          console.log("[Contacts.js] No contact IDs found, setting contacts to empty array.");
           setContacts([]);
           return;
         }
@@ -42,27 +36,21 @@ export default function Contacts({ navigation, route }) {
             id: snap.key,
             ...snap.val()
           }));
-          console.log("[Contacts.js] Fetched detailedContacts:", detailedContacts);
           setContacts(detailedContacts);
         } catch (error) {
-          console.error("[Contacts.js] Error fetching user details for contacts:", error);
-          setContacts([]); // Set to empty on error to avoid partial/stale data
+          setContacts([]);
         }
       } else {
-        console.log("[Contacts.js] contactsData is null or undefined, setting contacts to empty array.");
         setContacts([]);
       }
     });
 
     return () => {
-      console.log(`[Contacts.js] useEffect cleanup: Detaching listener from Contacts/${currentUserId}`);
       contactsRef.off('value', listener);
     };
   }, [currentUserId]);
 
-  useEffect(() => {
-    console.log("[Contacts.js] Contacts state updated:", contacts);
-  }, [contacts]);
+  useEffect(() => {}, [contacts]);
 
   const renderContact = ({ item }) => (
     <TouchableOpacity 
