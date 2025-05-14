@@ -1,25 +1,27 @@
-import { View, Text, StyleSheet, SafeAreaView, TextInput, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TextInput, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, StatusBar } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import firebase from '../Config';
-import { Button, Avatar, Menu, Provider } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Button, Avatar, Menu, Provider, IconButton } from 'react-native-paper';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { ImageBackground } from 'react-native';
 
 const database = firebase.database();
 const ref_database = database.ref();
 const ref_lesdiscussions = ref_database.child("LesDiscussions");
 const ref_listcomptes = ref_database.child("ListComptes");
 
-// my message status 
 const MessageStatus = ({ status }) => {
   let iconName = "check";
-  let iconColor = "#bbb";
+  let iconColor = "#8696a0";
   
   if (status === "delivered") {
     iconName = "check-all";
-    iconColor = "#bbb";
+    iconColor = "#8696a0";
   } else if (status === "read") {
     iconName = "check-all";
-    iconColor = "#5cb3ff";
+    iconColor = "#53bdeb";
   }
   
   return <MaterialCommunityIcons name={iconName} size={14} color={iconColor} />;
@@ -33,15 +35,41 @@ export default function Chat({ route, navigation }) {
   const [msg, setMsg] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
   const [secondUserName, setSecondUserName] = useState('');
+  const [secondUserImage, setSecondUserImage] = useState('');
   
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
-  
+  const [selectedImage, setSelectedImage] = useState(null);
+
   const idDesc = currentUserId > secondUserId ? 
     currentUserId + secondUserId : 
     secondUserId + currentUserId;
   
   const ref_undiscussion = ref_lesdiscussions.child(idDesc);
+
+  const pickImage = async () => {
+    try {
+      let permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permission.granted) {
+        Alert.alert("Permission Needed", "Please allow access to your photos");
+        return;
+      }
+      
+      let picker = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+  
+      if (!picker.canceled && picker.assets?.[0]?.uri) {
+        setSelectedImage(picker.assets[0].uri);
+      }
+    } catch (err) {
+      console.log("Image picker error:", err);
+      Alert.alert("Error", "Failed to select image");
+    }
+  };
   
   useEffect(() => {
     if (currentUserId) {
@@ -58,14 +86,70 @@ export default function Chat({ route, navigation }) {
         .then(snapshot => {
           if (snapshot.exists()) {
             setSecondUserName(snapshot.val().pseudo || 'Other User');
+            setSecondUserImage(snapshot.val().image || '');
+            
             navigation.setOptions({
-              title: snapshot.val().pseudo || 'Chat',
-              headerShown: true
+              headerShown: true,
+              headerStyle: {
+                backgroundColor: '#075e54',
+              },
+              headerTintColor: '#fff',
+              headerTitleAlign: 'left',
+              headerTitle: () => (
+                <View style={styles.headerContainer}>
+                  <TouchableOpacity 
+                    onPress={pickImage}
+                    style={styles.headerAvatarContainer}
+                  >
+                    {secondUserImage ? (
+                      <Image source={{ uri: secondUserImage }} style={styles.headerAvatar} />
+                    ) : (
+                      <Avatar.Text 
+                        size={40} 
+                        label={snapshot.val().pseudo.charAt(0).toUpperCase()} 
+                        style={styles.headerAvatar}
+                        labelStyle={{ fontSize: 18 }}
+                        color="#fff"
+                        backgroundColor="#128C7E"
+                      />
+                    )}
+                    <View style={styles.imagePickerIcon}>
+                      <MaterialCommunityIcons name="image-plus" size={16} color="#fff" />
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.headerTextContainer}>
+                    <Text style={styles.headerTitle}>{snapshot.val().pseudo || 'Chat'}</Text>
+                    <Text style={styles.headerSubtitle}>Online</Text>
+                  </View>
+                </View>
+              ),
+              headerRight: () => (
+                <View style={styles.headerActions}>
+                  <IconButton
+                    icon="video"
+                    iconColor="#fff"
+                    size={22}
+                    onPress={() => {}}
+                  />
+                  <IconButton
+                    icon="phone"
+                    iconColor="#fff"
+                    size={22}
+                    onPress={() => {}}
+                  />
+                  <IconButton
+                    icon="dots-vertical"
+                    iconColor="#fff"
+                    size={22}
+                    onPress={() => {}}
+                  />
+                </View>
+              )
             });
           }
         });
     }
-    
+
     const messageListenerCallback = snapshot => {
       const messageList = [];
       if (snapshot.exists()) {
@@ -169,8 +253,10 @@ export default function Chat({ route, navigation }) {
           {!isCurrentUser && (
             <Avatar.Text 
               size={30} 
-              label={secondUserName.charAt(0)} 
+              label={secondUserName.charAt(0).toUpperCase()} 
               style={styles.messageAvatar} 
+              color="#fff"
+              backgroundColor="#128C7E"
             />
           )}
           <View 
@@ -181,10 +267,12 @@ export default function Chat({ route, navigation }) {
             ]}
           >
             <Text style={styles.messageText}>{item.text}</Text>
-            <Text style={styles.timestampText}>
-              {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-            </Text>
-            {isCurrentUser && <MessageStatus status={item.status} />}
+            <View style={styles.messageFooter}>
+              <Text style={styles.timestampText}>
+                {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              </Text>
+              {isCurrentUser && <MessageStatus status={item.status} />}
+            </View>
           </View>
           {isCurrentUser && <View style={styles.spacer} />}
         </View>
@@ -194,46 +282,82 @@ export default function Chat({ route, navigation }) {
   
   return (
     <Provider>
-      <SafeAreaView style={styles.container}>
-        <Menu
-          visible={menuVisible}
-          onDismiss={closeMenu}
-          anchor={{ x: 0, y: 0 }}
-          style={styles.menu}
-        >
-          <Menu.Item
-            onPress={deleteMessage}
-            title="Delete message"
-            leadingIcon="delete"
-          />
-        </Menu>
-        
-        <FlatList
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.messageList}
-        />
-        
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.inputContainer}
-        >
-          <TextInput
-            placeholder="Type your message..."
-            value={msg}
-            onChangeText={setMsg}
-            style={styles.input}
-          />
-          <Button 
-            mode="contained" 
-            onPress={handleSend}
-            style={styles.sendButton}
+      <StatusBar backgroundColor="#075e54" barStyle="light-content" />
+      <ImageBackground 
+        source={selectedImage ? { uri: selectedImage } : require("../assets/walpaper.jpg")} 
+        style={styles.container}
+        imageStyle={styles.backgroundImage}
+      >
+        <SafeAreaView style={styles.innerContainer}>
+          <Menu
+            visible={menuVisible}
+            onDismiss={closeMenu}
+            anchor={{ x: 0, y: 0 }}
+            style={styles.menu}
           >
-            Send
-          </Button>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+            <Menu.Item
+              onPress={deleteMessage}
+              title="Delete message"
+              leadingIcon="delete"
+            />
+          </Menu>
+          
+          <FlatList
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.messageList}
+          />
+          
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.inputContainer}
+          >
+            <View style={styles.inputWrapper}>
+              <IconButton
+                icon="emoticon"
+                iconColor="#767676"
+                size={24}
+                style={styles.inputIcon}
+                onPress={() => {}}
+              />
+              <TextInput
+                placeholder="Message"
+                value={msg}
+                onChangeText={setMsg}
+                style={styles.input}
+                placeholderTextColor="#888"
+              />
+              <IconButton
+                icon="paperclip"
+                iconColor="#767676"
+                size={24}
+                style={styles.inputIcon}
+                onPress={() => {}}
+              />
+              <IconButton
+                icon="camera"
+                iconColor="#767676"
+                size={24}
+                style={styles.inputIcon}
+                onPress={pickImage}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleSend}
+              disabled={msg.trim().length === 0}
+            >
+              {msg.trim().length > 0 ? (
+                <Ionicons name="send" size={20} color="#fff" />
+              ) : (
+                <MaterialCommunityIcons name="microphone" size={24} color="#fff" />
+              )}
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </ImageBackground>
     </Provider>
   );
 }
@@ -241,74 +365,110 @@ export default function Chat({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    width: '100%',
+    height: '100%',
   },
-  header: {
+  backgroundImage: {
+    opacity: 0.5,
+  },
+  innerContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#6974d6',
-    padding: 15,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
   },
-  avatar: {
-    marginRight: 10,
-    backgroundColor: '#fff',
+  headerAvatarContainer: {
+    position: 'relative',
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#128C7E',
+  },
+  imagePickerIcon: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    backgroundColor: '#25D366',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTextContainer: {
+    marginLeft: 10,
+    justifyContent: 'center',
   },
   headerTitle: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
+  headerSubtitle: {
+    color: '#e0e0e0',
+    fontSize: 12,
+  },
+  headerActions: {
+    flexDirection: 'row',
+  },
   messageList: {
-    padding: 15,
+    padding: 10,
     paddingBottom: 70,
   },
   messageRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginVertical: 5,
+    marginVertical: 2,
     width: '100%',
   },
   messageAvatar: {
     marginRight: 5,
-    backgroundColor: '#6974d6',
+    backgroundColor: '#128C7E',
   },
   spacer: {
     width: 35,
   },
   messageBubble: {
-    maxWidth: '70%',
-    padding: 12,
-    borderRadius: 16,
+    maxWidth: '75%',
+    padding: 8,
+    paddingVertical: 6,
+    borderRadius: 7.5,
+    minWidth: 80,
   },
   currentUserMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#DCF8C6',
-    borderBottomRightRadius: 0,
+    backgroundColor: '#e7ffdb',
+    borderTopRightRadius: 0,
     marginLeft: 'auto',
   },
   otherUserMessage: {
     alignSelf: 'flex-start',
     backgroundColor: '#fff',
-    borderBottomLeftRadius: 0,
+    borderTopLeftRadius: 0,
     marginRight: 'auto',
   },
   selectedMessage: {
-    backgroundColor: '#b7f0a1',
+    backgroundColor: '#dcf8c6',
   },
   messageText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#303030',
+    lineHeight: 20,
+  },
+  messageFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 2,
   },
   timestampText: {
-    fontSize: 10,
-    color: '#999',
-    alignSelf: 'flex-end',
-    marginTop: 4,
+    fontSize: 11,
+    color: '#8696a0',
+    marginRight: 4,
   },
   inputContainer: {
     position: 'absolute',
@@ -316,24 +476,37 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    padding: 10,
+    padding: 5,
+    paddingHorizontal: 10,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
     backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderRadius: 25,
+    alignItems: 'center',
+    marginRight: 8,
   },
   input: {
     flex: 1,
     height: 40,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    backgroundColor: '#f9f9f9',
-    marginRight: 10,
+    paddingHorizontal: 0,
+    fontSize: 16,
+    color: '#303030',
+  },
+  inputIcon: {
+    margin: 0,
+    padding: 0,
   },
   sendButton: {
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 23,
+    backgroundColor: '#00a884',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   menu: {
     position: 'absolute',

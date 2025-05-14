@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createMaterialBottomTabNavigator } from '@react-navigation/material-bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Text, View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text, View, StyleSheet, ActivityIndicator, StatusBar } from 'react-native';
 import ListUsers from './Home/ListUsers';
 import Setting from './Home/Setting';
 import Contacts from './Home/Contacts';
@@ -12,28 +12,24 @@ const database = firebase.database();
 const ref_listcomptes = database.ref("ListComptes");
 const Tab = createMaterialBottomTabNavigator();
 
-export default function Home({ route }) {
+export default function Home({ route, navigation }) {
   const currentUserId = route.params?.currentUserId;
   const [isLoading, setIsLoading] = useState(true);
-
-  console.log("[Home.js] Received currentUserId:", currentUserId);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     if (!currentUserId) {
-      console.error("[Home.js] No currentUserId provided");
+      console.error("No currentUserId provided");
       setIsLoading(false);
       return;
     }
 
     const syncCurrentUserToListComptes = async () => {
-      console.log("[Home.js] Starting sync of current user with ListComptes");
       try {
         const listComptesSnapshot = await ref_listcomptes.once('value');
         const existingEntries = listComptesSnapshot.val() || {};
-        console.log("[Home.js] Existing entries in ListComptes:", Object.keys(existingEntries));
 
         if (!existingEntries[currentUserId]) {
-          console.log("[Home.js] Creating missing entry for current user:", currentUserId);
           const currentUser = auth.currentUser;
           if (currentUser) {
             await ref_listcomptes.child(currentUserId).set({
@@ -42,63 +38,106 @@ export default function Home({ route }) {
               pseudo: currentUser.email ? currentUser.email.split('@')[0] : 'User',
               numero: ''
             });
-            console.log("[Home.js] Created entry for current user:", currentUserId);
           }
         } else {
-          console.log("[Home.js] User already exists in ListComptes:", currentUserId);
+          // Get current user data
+          setCurrentUser(existingEntries[currentUserId]);
         }
       } catch (error) {
-        console.error("[Home.js] Error syncing current user:", error);
+        console.error("Error syncing current user:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
     syncCurrentUserToListComptes();
-  }, [currentUserId]);
+    
+    // Set header title to WhatsUp
+    navigation.setOptions({
+      headerShown: true,
+      title: "WhatsUp",
+      headerStyle: {
+        backgroundColor: '#075e54',
+      },
+      headerTitleStyle: {
+        color: '#fff',
+        fontWeight: 'bold',
+      },
+      headerRight: () => (
+        <View style={styles.headerRight}>
+          <MaterialCommunityIcons 
+            name="magnify" 
+            size={24} 
+            color="#fff" 
+            style={styles.headerIcon}
+            onPress={() => {}}
+          />
+          <MaterialCommunityIcons 
+            name="dots-vertical" 
+            size={24} 
+            color="#fff" 
+            style={styles.headerIcon}
+            onPress={() => {}}
+          />
+        </View>
+      ),
+    });
+  }, [currentUserId, navigation]);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6200ee" />
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color="#25D366" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <Tab.Navigator barStyle={{ backgroundColor: '#6974d6' }}>
-      <Tab.Screen 
-        name="Users" 
-        component={ListUsers} 
-        initialParams={{ currentUserId }} 
-        options={{
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="account-group" color={color} size={24} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Favorite Contacts"
-        component={Contacts}
-        initialParams={{ currentUserId }}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="contacts" color={color} size={24} />
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Settings" 
-        component={Setting} 
-        initialParams={{ currentUserId }}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="cog" color={color} size={24} />
-          ),
-        }}
-      />
-    </Tab.Navigator>
+    <>
+      <StatusBar backgroundColor="#075e54" barStyle="light-content" />
+      <Tab.Navigator
+        initialRouteName="Users"
+        activeColor="#fff"
+        inactiveColor="#e0e0e0"
+        barStyle={styles.tabBar}
+        shifting={true}
+      >
+        <Tab.Screen 
+          name="Users" 
+          component={ListUsers} 
+          initialParams={{ currentUserId }} 
+          options={{
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons name="chat" color={color} size={24} />
+            ),
+            tabBarColor: '#075e54',
+          }}
+        />
+        <Tab.Screen
+          name="Contacts"
+          component={Contacts}
+          initialParams={{ currentUserId }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons name="account-group" color={color} size={24} />
+            ),
+            tabBarColor: '#075e54',
+          }}
+        />
+        <Tab.Screen 
+          name="Settings" 
+          component={Setting} 
+          initialParams={{ currentUserId }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons name="cog" color={color} size={24} />
+            ),
+            tabBarColor: '#075e54',
+          }}
+        />
+      </Tab.Navigator>
+    </>
   );
 }
 
@@ -108,5 +147,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666'
+  },
+  tabBar: {
+    backgroundColor: '#075e54',
+    height: 60,
+    paddingBottom: 5,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    marginRight: 10,
+  },
+  headerIcon: {
+    marginHorizontal: 10,
   }
 });
