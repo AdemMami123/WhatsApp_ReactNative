@@ -201,6 +201,51 @@ class CallService {
     this.callDuration = 0;
     return this;
   }
+
+  // Get call history for current user
+  async getCallHistory() {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('User not authenticated');
+
+    try {
+      // Get call history entries
+      const snapshot = await this.callHistoryRef.child(currentUser.uid).orderByChild('timestamp').once('value');
+      const callHistory = [];
+
+      // Process each call history entry
+      snapshot.forEach(childSnapshot => {
+        callHistory.push({
+          id: childSnapshot.key,
+          ...childSnapshot.val()
+        });
+      });
+
+      // Sort by timestamp (newest first)
+      return callHistory.reverse();
+    } catch (error) {
+      console.error('Error fetching call history:', error);
+      throw error;
+    }
+  }
+
+  // Get user details for a specific user ID
+  async getUserDetails(userId) {
+    if (!userId) return null;
+
+    try {
+      const snapshot = await database.ref('ListComptes').child(userId).once('value');
+      if (snapshot.exists()) {
+        return {
+          id: userId,
+          ...snapshot.val()
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+      return null;
+    }
+  }
 }
 
 export default new CallService();

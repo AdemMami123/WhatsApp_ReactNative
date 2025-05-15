@@ -6,6 +6,7 @@ import ListUsers from './Home/ListUsers';
 import Setting from './Home/Setting';
 import Contacts from './Home/Contacts';
 import Groups from './Home/Groups';
+import CallHistory from './Home/CallHistory';
 import firebase from '../Config';
 
 const auth = firebase.auth();
@@ -133,6 +134,17 @@ export default function Home({ route, navigation }) {
           options={{
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="account-box-multiple" color={color} size={24} />
+            ),
+            tabBarColor: '#075e54',
+          }}
+        />
+        <Tab.Screen
+          name="Calls"
+          component={CallHistory}
+          initialParams={{ currentUserId }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons name="phone" color={color} size={24} />
             ),
             tabBarColor: '#075e54',
           }}

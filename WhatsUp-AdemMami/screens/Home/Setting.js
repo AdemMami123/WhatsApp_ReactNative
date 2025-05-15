@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { 
-  View, 
-  StyleSheet, 
-  Image, 
-  TouchableOpacity, 
-  Alert, 
+import {
+  View,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Alert,
   ScrollView,
   StatusBar
 } from "react-native";
@@ -12,6 +12,8 @@ import { Text, TextInput, Divider, IconButton } from "react-native-paper";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from "expo-image-picker";
 import firebase from "../../Config/index";
+import { useLanguage } from "../../context/LanguageContext";
+import LanguageSelector from "../../components/LanguageSelector";
 const auth = firebase.auth();
 
 const database = firebase.database();
@@ -20,6 +22,7 @@ const ref_listcomptes = ref_database.child("ListComptes");
 
 export default function Setting({ navigation, route }) {
   const currentUserId = route.params?.currentUserId;
+  const { t } = useLanguage();
 
   const [pseudo, setPseudo] = useState("");
   const [email, setEmail] = useState("");
@@ -51,55 +54,55 @@ export default function Setting({ navigation, route }) {
   const pickImage = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (!permissionResult.granted) {
-        Alert.alert("Permission Required", "Please allow access to your photos");
+        Alert.alert(t("error"), t("Please allow access to your photos"));
         return;
       }
-      
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-  
+
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setUriImage(result.assets[0].uri);
       }
     } catch (error) {
       console.log("Error picking image:", error);
-      Alert.alert("Error", "Failed to select image");
+      Alert.alert(t("error"), t("Failed to select image"));
     }
   };
 
   const handleSave = async () => {
     if (!currentUserId) {
-      Alert.alert("Error", "User ID is missing");
+      Alert.alert(t("error"), t("User ID is missing"));
       return;
     }
-    
+
     if (!pseudo || pseudo.trim().length < 3) {
-      Alert.alert("Validation Error", "Username must be at least 3 characters");
+      Alert.alert(t("error"), t("usernameTooShort"));
       return;
     }
-    
+
     setSaving(true);
-    
+
     try {
       const ref_uncompte = ref_listcomptes.child(currentUserId);
-      await ref_uncompte.update({ 
-        id: currentUserId, 
+      await ref_uncompte.update({
+        id: currentUserId,
         email,
-        pseudo, 
+        pseudo,
         numero,
         image: uriImage || ""
       });
-      
-      Alert.alert("Success", "Profile updated successfully");
+
+      Alert.alert(t("success"), t("profileUpdated"));
     } catch (error) {
       console.error("Error updating profile:", error);
-      Alert.alert("Error", "Failed to update profile");
+      Alert.alert(t("error"), t("Failed to update profile"));
     } finally {
       setSaving(false);
     }
@@ -107,15 +110,15 @@ export default function Setting({ navigation, route }) {
 
   const handleLogout = () => {
     Alert.alert(
-      "Logout",
-      "Are you sure you want to log out?",
+      t("logout"),
+      t("logoutConfirmation"),
       [
         {
-          text: "Cancel",
+          text: t("cancel"),
           style: "cancel"
         },
         {
-          text: "Logout",
+          text: t("logout"),
           onPress: () => {
             auth.signOut().then(() => {
               navigation.replace("Auth");
@@ -130,7 +133,7 @@ export default function Setting({ navigation, route }) {
   return (
     <ScrollView style={styles.container}>
       <StatusBar backgroundColor="#075e54" barStyle="light-content" />
-      
+
       <View style={styles.profileHeader}>
         <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
           {uriImage ? (
@@ -145,15 +148,15 @@ export default function Setting({ navigation, route }) {
           </View>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.settingsSection}>
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="account-edit" size={22} color="#128C7E" style={styles.sectionIcon} />
-          <Text style={styles.sectionTitle}>Profile Information</Text>
+          <Text style={styles.sectionTitle}>{t('profileInformation')}</Text>
         </View>
-        
+
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Username</Text>
+          <Text style={styles.inputLabel}>{t('username')}</Text>
           <TextInput
             mode="flat"
             value={pseudo}
@@ -164,14 +167,15 @@ export default function Setting({ navigation, route }) {
             error={pseudo.trim().length > 0 && pseudo.trim().length < 3}
             right={<TextInput.Affix text={`${pseudo.length}/25`} />}
             maxLength={25}
+            placeholder={t('usernamePlaceholder')}
           />
           <Text style={styles.inputHelper}>
-            This name will be visible to your contacts
+            {t('usernameHelper')}
           </Text>
         </View>
-        
+
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Email</Text>
+          <Text style={styles.inputLabel}>{t('email')}</Text>
           <TextInput
             mode="flat"
             value={email}
@@ -182,14 +186,15 @@ export default function Setting({ navigation, route }) {
             keyboardType="email-address"
             disabled={true}
             right={<TextInput.Icon icon="lock" color="#888" />}
+            placeholder={t('emailPlaceholder')}
           />
           <Text style={styles.inputHelper}>
-            Email cannot be changed
+            {t('emailHelper')}
           </Text>
         </View>
-        
+
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Phone Number</Text>
+          <Text style={styles.inputLabel}>{t('phoneNumber')}</Text>
           <TextInput
             mode="flat"
             value={numero}
@@ -198,32 +203,35 @@ export default function Setting({ navigation, route }) {
             underlineColor="#ddd"
             activeUnderlineColor="#128C7E"
             keyboardType="phone-pad"
+            placeholder={t('phoneNumberPlaceholder')}
           />
         </View>
       </View>
-      
+
+      <LanguageSelector />
+
       <Divider style={styles.divider} />
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={[styles.saveButton, saving && styles.savingButton]}
         onPress={handleSave}
         disabled={saving}
       >
         <Text style={styles.saveButtonText}>
-          {saving ? "Saving..." : "Save Changes"}
+          {saving ? t('saving') : t('saveChanges')}
         </Text>
       </TouchableOpacity>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={styles.logoutButton}
         onPress={handleLogout}
       >
         <MaterialCommunityIcons name="logout" size={20} color="#FF5252" style={styles.logoutIcon} />
-        <Text style={styles.logoutText}>Logout</Text>
+        <Text style={styles.logoutText}>{t('logout')}</Text>
       </TouchableOpacity>
-      
+
       <View style={styles.versionContainer}>
-        <Text style={styles.versionText}>WhatsApp By Adem Mami</Text>
+        <Text style={styles.versionText}>{t('version')}</Text>
       </View>
     </ScrollView>
   );

@@ -15,6 +15,7 @@ import GroupDetails from './screens/GroupDetails';
 import CallScreen from './screens/CallScreen';
 
 import firebase from './Config';
+import { LanguageProvider } from './context/LanguageContext';
 
 LogBox.ignoreLogs([
   'Setting a timer',
@@ -45,49 +46,51 @@ export default function App() {
   }, []);
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Auth" component={Auth} />
-        <Stack.Screen
-          name="NewAccount"
-          component={NewAccount}
-          options={{
-            headerShown: true,
-            headerTitle: "Back to Auth"
-          }}
-        />
-        <Stack.Screen name="Home" component={Home} />
-        <Stack.Screen
-          name="Chat"
-          component={Chat}
-          options={{
-            headerShown: false
-          }}
-        />
-        <Stack.Screen name="Setting" component={Setting} />
-        <Stack.Screen
-          name="CreateGroup"
-          component={CreateGroup}
-        />
-        <Stack.Screen
-          name="GroupChat"
-          component={GroupChat}
-        />
-        <Stack.Screen
-          name="GroupDetails"
-          component={GroupDetails}
-        />
-        <Stack.Screen
-          name="CallScreen"
-          component={CallScreen}
-          options={{
-            headerShown: false,
-            gestureEnabled: false,
-            animation: 'fade'
-          }}
-        />
-      </Stack.Navigator>
-      <StatusBar style="auto" />
-    </NavigationContainer>
+    <LanguageProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Auth" component={Auth} />
+          <Stack.Screen
+            name="NewAccount"
+            component={NewAccount}
+            options={{
+              headerShown: true,
+              headerTitle: "Back to Auth"
+            }}
+          />
+          <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen
+            name="Chat"
+            component={Chat}
+            options={{
+              headerShown: false
+            }}
+          />
+          <Stack.Screen name="Setting" component={Setting} />
+          <Stack.Screen
+            name="CreateGroup"
+            component={CreateGroup}
+          />
+          <Stack.Screen
+            name="GroupChat"
+            component={GroupChat}
+          />
+          <Stack.Screen
+            name="GroupDetails"
+            component={GroupDetails}
+          />
+          <Stack.Screen
+            name="CallScreen"
+            component={CallScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: false,
+              animation: 'fade'
+            }}
+          />
+        </Stack.Navigator>
+        <StatusBar style="auto" />
+      </NavigationContainer>
+    </LanguageProvider>
   );
 }
