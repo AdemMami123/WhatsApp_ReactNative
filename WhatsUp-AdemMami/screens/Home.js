@@ -5,6 +5,7 @@ import { Text, View, StyleSheet, ActivityIndicator, StatusBar } from 'react-nati
 import ListUsers from './Home/ListUsers';
 import Setting from './Home/Setting';
 import Contacts from './Home/Contacts';
+import Groups from './Home/Groups';
 import firebase from '../Config';
 
 const auth = firebase.auth();
@@ -51,7 +52,7 @@ export default function Home({ route, navigation }) {
     };
 
     syncCurrentUserToListComptes();
-    
+
     // Set header title to WhatsUp
     navigation.setOptions({
       headerShown: true,
@@ -65,17 +66,17 @@ export default function Home({ route, navigation }) {
       },
       headerRight: () => (
         <View style={styles.headerRight}>
-          <MaterialCommunityIcons 
-            name="magnify" 
-            size={24} 
-            color="#fff" 
+          <MaterialCommunityIcons
+            name="magnify"
+            size={24}
+            color="#fff"
             style={styles.headerIcon}
             onPress={() => {}}
           />
-          <MaterialCommunityIcons 
-            name="dots-vertical" 
-            size={24} 
-            color="#fff" 
+          <MaterialCommunityIcons
+            name="dots-vertical"
+            size={24}
+            color="#fff"
             style={styles.headerIcon}
             onPress={() => {}}
           />
@@ -103,13 +104,24 @@ export default function Home({ route, navigation }) {
         barStyle={styles.tabBar}
         shifting={true}
       >
-        <Tab.Screen 
-          name="Users" 
-          component={ListUsers} 
-          initialParams={{ currentUserId }} 
+        <Tab.Screen
+          name="Users"
+          component={ListUsers}
+          initialParams={{ currentUserId }}
           options={{
             tabBarIcon: ({ color }) => (
               <MaterialCommunityIcons name="chat" color={color} size={24} />
+            ),
+            tabBarColor: '#075e54',
+          }}
+        />
+        <Tab.Screen
+          name="Groups"
+          component={Groups}
+          initialParams={{ currentUserId }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <MaterialCommunityIcons name="account-multiple" color={color} size={24} />
             ),
             tabBarColor: '#075e54',
           }}
@@ -120,14 +132,14 @@ export default function Home({ route, navigation }) {
           initialParams={{ currentUserId }}
           options={{
             tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons name="account-group" color={color} size={24} />
+              <MaterialCommunityIcons name="account-box-multiple" color={color} size={24} />
             ),
             tabBarColor: '#075e54',
           }}
         />
-        <Tab.Screen 
-          name="Settings" 
-          component={Setting} 
+        <Tab.Screen
+          name="Settings"
+          component={Setting}
           initialParams={{ currentUserId }}
           options={{
             tabBarIcon: ({ color }) => (

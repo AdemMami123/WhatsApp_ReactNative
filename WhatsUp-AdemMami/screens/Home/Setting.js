@@ -223,7 +223,7 @@ export default function Setting({ navigation, route }) {
       </TouchableOpacity>
       
       <View style={styles.versionContainer}>
-        <Text style={styles.versionText}>WhatsUp v1.0</Text>
+        <Text style={styles.versionText}>WhatsApp By Adem Mami</Text>
       </View>
     </ScrollView>
   );

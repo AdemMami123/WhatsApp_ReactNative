@@ -1,44 +1,30 @@
-import { View, Text, StyleSheet, SafeAreaView, TextInput, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TextInput, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, StatusBar, ImageBackground } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import firebase from '../Config';
 import { Button, Avatar, Menu, Provider, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { ImageBackground } from 'react-native';
 import CallService from '../services/CallService';
 import { requestMicrophonePermission } from '../utils/CallUtils';
 import IncomingCallNotification from '../components/IncomingCallNotification';
 
 const database = firebase.database();
 const ref_database = database.ref();
-const ref_lesdiscussions = ref_database.child("LesDiscussions");
+const ref_groups = ref_database.child("Groups");
+const ref_groupMessages = ref_database.child("GroupMessages");
+const ref_groupMembers = ref_database.child("GroupMembers");
 const ref_listcomptes = ref_database.child("ListComptes");
 
-const MessageStatus = ({ status }) => {
-  let iconName = "check";
-  let iconColor = "#8696a0";
-
-  if (status === "delivered") {
-    iconName = "check-all";
-    iconColor = "#8696a0";
-  } else if (status === "read") {
-    iconName = "check-all";
-    iconColor = "#53bdeb";
-  }
-
-  return <MaterialCommunityIcons name={iconName} size={14} color={iconColor} />;
-};
-
-export default function Chat({ route, navigation }) {
+export default function GroupChat({ route, navigation }) {
   const currentUserId = route.params?.currentUserId;
-  const secondUserId = route.params?.secondUserId;
+  const groupId = route.params?.groupId;
 
   const [messages, setMessages] = useState([]);
   const [msg, setMsg] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
-  const [secondUserName, setSecondUserName] = useState('');
-  const [secondUserImage, setSecondUserImage] = useState('');
+  const [groupInfo, setGroupInfo] = useState(null);
+  const [groupMembers, setGroupMembers] = useState({});
+  const [userDetails, setUserDetails] = useState({});
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -46,35 +32,7 @@ export default function Chat({ route, navigation }) {
   const [incomingCall, setIncomingCall] = useState(null);
   const [callStatus, setCallStatus] = useState('idle');
 
-  const idDesc = currentUserId > secondUserId ?
-    currentUserId + secondUserId :
-    secondUserId + currentUserId;
-
-  const ref_undiscussion = ref_lesdiscussions.child(idDesc);
-
-  const pickImage = async () => {
-    try {
-      let permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert("Permission Needed", "Please allow access to your photos");
-        return;
-      }
-
-      let picker = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-      });
-
-      if (!picker.canceled && picker.assets?.[0]?.uri) {
-        setSelectedImage(picker.assets[0].uri);
-      }
-    } catch (err) {
-      console.log("Image picker error:", err);
-      Alert.alert("Error", "Failed to select image");
-    }
-  };
+  const flatListRef = useRef(null);
 
   // Handle call status changes
   const handleCallStatusChanged = (status, user) => {
@@ -109,8 +67,8 @@ export default function Chat({ route, navigation }) {
     }
   }, [currentUserId, currentUserName]);
 
-  // Handle audio call button press
-  const handleAudioCall = async () => {
+  // Handle group audio call button press
+  const handleGroupAudioCall = async () => {
     // Request microphone permission
     const hasPermission = await requestMicrophonePermission();
     if (!hasPermission) {
@@ -118,138 +76,167 @@ export default function Chat({ route, navigation }) {
       return;
     }
 
-    // Navigate to call screen
+    // For group calls, we'll use the group info as the remote user
+    // In a real implementation, this would initiate a call to all group members
     navigation.navigate('CallScreen', {
       callType: 'audio',
       remoteUser: {
-        id: secondUserId,
-        name: secondUserName,
-        avatar: secondUserImage
+        id: groupId,
+        name: groupInfo?.name || 'Group',
+        avatar: null,
+        isGroup: true
       },
       isIncoming: false
     });
   };
 
   useEffect(() => {
-    if (currentUserId) {
-      ref_listcomptes.child(currentUserId).once('value')
-        .then(snapshot => {
-          if (snapshot.exists()) {
-            setCurrentUserName(snapshot.val().pseudo || 'You');
-          }
-        });
+    if (!currentUserId || !groupId) {
+      Alert.alert('Error', 'Missing user or group information');
+      navigation.goBack();
+      return;
     }
 
-    if (secondUserId) {
-      ref_listcomptes.child(secondUserId).once('value')
-        .then(snapshot => {
-          if (snapshot.exists()) {
-            setSecondUserName(snapshot.val().pseudo || 'Other User');
-            setSecondUserImage(snapshot.val().image || '');
+    // Get current user details
+    ref_listcomptes.child(currentUserId).once('value')
+      .then(snapshot => {
+        if (snapshot.exists()) {
+          setCurrentUserName(snapshot.val().pseudo || 'User');
+        }
+      });
 
-            navigation.setOptions({
-              headerShown: true,
-              headerStyle: {
-                backgroundColor: '#075e54',
-              },
-              headerTintColor: '#fff',
-              headerTitleAlign: 'left',
-              headerTitle: () => (
-                <View style={styles.headerContainer}>
-                  <TouchableOpacity
-                    onPress={pickImage}
-                    style={styles.headerAvatarContainer}
-                  >
-                    {secondUserImage ? (
-                      <Image source={{ uri: secondUserImage }} style={styles.headerAvatar} />
-                    ) : (
-                      <Avatar.Text
-                        size={40}
-                        label={snapshot.val().pseudo.charAt(0).toUpperCase()}
-                        style={styles.headerAvatar}
-                        labelStyle={{ fontSize: 18 }}
-                        color="#fff"
-                        backgroundColor="#128C7E"
-                      />
-                    )}
-                    <View style={styles.imagePickerIcon}>
-                      <MaterialCommunityIcons name="image-plus" size={16} color="#fff" />
-                    </View>
-                  </TouchableOpacity>
-                  <View style={styles.headerTextContainer}>
-                    <Text style={styles.headerTitle}>{snapshot.val().pseudo || 'Chat'}</Text>
-                    <Text style={styles.headerSubtitle}>Online</Text>
-                  </View>
-                </View>
-              ),
-              headerRight: () => (
-                <View style={styles.headerActions}>
-                  <IconButton
-                    icon="video"
-                    iconColor="#fff"
-                    size={22}
-                    onPress={() => {}}
-                  />
-                  <IconButton
-                    icon="phone"
-                    iconColor="#fff"
-                    size={22}
-                    onPress={handleAudioCall}
-                  />
-                  <IconButton
-                    icon="dots-vertical"
-                    iconColor="#fff"
-                    size={22}
-                    onPress={() => {}}
-                  />
-                </View>
-              )
-            });
-          }
-        });
-    }
-
-    const messageListenerCallback = snapshot => {
-      const messageList = [];
+    // Get group info
+    const groupInfoListener = ref_groups.child(groupId).on('value', snapshot => {
       if (snapshot.exists()) {
+        const groupData = snapshot.val();
+        setGroupInfo(groupData);
+
+        // Set navigation header
+        navigation.setOptions({
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: '#075e54',
+          },
+          headerTintColor: '#fff',
+          headerTitle: () => (
+            <TouchableOpacity
+              style={styles.headerTitle}
+              onPress={() => navigation.navigate('GroupDetails', { currentUserId, groupId })}
+            >
+              <Avatar.Text
+                size={40}
+                label={groupData.name ? groupData.name.charAt(0).toUpperCase() : 'G'}
+                color="#fff"
+                backgroundColor="#128C7E"
+                style={styles.headerAvatar}
+              />
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.headerTitleText}>{groupData.name || 'Group'}</Text>
+                <Text style={styles.headerSubtitle}>
+                  {Object.keys(groupMembers).length} members
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <View style={styles.headerActions}>
+              <IconButton
+                icon="phone"
+                iconColor="#fff"
+                size={22}
+                onPress={handleGroupAudioCall}
+              />
+              <IconButton
+                icon="dots-vertical"
+                iconColor="#fff"
+                size={22}
+                onPress={() => navigation.navigate('GroupDetails', { currentUserId, groupId })}
+              />
+            </View>
+          )
+        });
+      }
+    });
+
+    // Get group members
+    const groupMembersListener = ref_groupMembers.child(groupId).on('value', async snapshot => {
+      if (snapshot.exists()) {
+        const members = snapshot.val();
+        setGroupMembers(members);
+
+        // Fetch details for all members
+        const memberIds = Object.keys(members).filter(id => members[id] === true);
+        const memberPromises = memberIds.map(memberId => {
+          return ref_listcomptes.child(memberId).once('value')
+            .then(userSnapshot => {
+              if (userSnapshot.exists()) {
+                return { id: memberId, ...userSnapshot.val() };
+              }
+              return null;
+            });
+        });
+
+        const memberDetails = await Promise.all(memberPromises);
+        const validMembers = memberDetails.filter(member => member !== null);
+
+        const membersMap = {};
+        validMembers.forEach(member => {
+          membersMap[member.id] = member;
+        });
+
+        setUserDetails(membersMap);
+      }
+    });
+
+    // Get messages
+    const messagesListener = ref_groupMessages.child(groupId).on('value', snapshot => {
+      if (snapshot.exists()) {
+        const messagesData = [];
         snapshot.forEach(childSnapshot => {
-          messageList.push({
+          messagesData.push({
             id: childSnapshot.key,
             ...childSnapshot.val()
           });
         });
-        messageList.sort((a, b) => a.timestamp - b.timestamp);
-        setMessages(messageList);
-      } else {
-        setMessages([]);
-      }
-    };
 
-    ref_undiscussion.on('value', messageListenerCallback);
+        // Sort messages by timestamp
+        messagesData.sort((a, b) => a.timestamp - b.timestamp);
+        setMessages(messagesData);
+
+        // Scroll to bottom
+        setTimeout(() => {
+          if (flatListRef.current && messagesData.length > 0) {
+            flatListRef.current.scrollToEnd({ animated: true });
+          }
+        }, 100);
+      }
+    });
 
     return () => {
-      ref_undiscussion.off('value', messageListenerCallback);
+      ref_groups.child(groupId).off('value', groupInfoListener);
+      ref_groupMembers.child(groupId).off('value', groupMembersListener);
+      ref_groupMessages.child(groupId).off('value', messagesListener);
     };
-  }, [currentUserId, secondUserId, navigation, ref_undiscussion]);
+  }, [currentUserId, groupId, navigation]);
 
   const handleSend = () => {
     if (msg.trim() === '') return;
 
     const messageData = {
       sender: currentUserId,
+      senderName: currentUserName,
       text: msg,
       timestamp: Date.now(),
-      status: "sent"
     };
 
-    ref_undiscussion.push(messageData)
+    ref_groupMessages.child(groupId).push(messageData)
       .then(() => {
         console.log('Message sent successfully');
         setMsg('');
       })
       .catch(error => {
         console.error('Error sending message:', error);
-        alert('Failed to send message: ' + error.message);
+        Alert.alert('Error', 'Failed to send message: ' + error.message);
       });
   };
 
@@ -266,41 +253,43 @@ export default function Chat({ route, navigation }) {
   };
 
   const deleteMessage = () => {
-    if (!selectedMessage) return;
+    if (selectedMessage) {
+      ref_groupMessages.child(groupId).child(selectedMessage.id).remove()
+        .then(() => {
+          console.log('Message deleted successfully');
+          closeMenu();
+        })
+        .catch(error => {
+          console.error('Error deleting message:', error);
+          Alert.alert('Error', 'Failed to delete message: ' + error.message);
+        });
+    }
+  };
 
-    Alert.alert(
-      "Delete Message",
-      "Are you sure you want to delete this message?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: closeMenu
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            const messageRef = ref_undiscussion.child(selectedMessage.id);
-            messageRef.remove()
-              .then(() => {
-                console.log('Message deleted successfully');
-                closeMenu();
-              })
-              .catch(error => {
-                console.error('Error deleting message:', error);
-                alert('Failed to delete message: ' + error.message);
-                closeMenu();
-              });
-          }
-        }
-      ]
-    );
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to change the chat background.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [9, 16],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setSelectedImage(result.assets[0].uri);
+    }
   };
 
   const renderMessage = ({ item }) => {
     const isCurrentUser = item.sender === currentUserId;
     const isSelected = selectedMessage && selectedMessage.id === item.id;
+    const sender = userDetails[item.sender];
 
     return (
       <TouchableOpacity
@@ -312,7 +301,7 @@ export default function Chat({ route, navigation }) {
           {!isCurrentUser && (
             <Avatar.Text
               size={30}
-              label={secondUserName.charAt(0).toUpperCase()}
+              label={sender?.pseudo ? sender.pseudo.charAt(0).toUpperCase() : '?'}
               style={styles.messageAvatar}
               color="#fff"
               backgroundColor="#128C7E"
@@ -325,12 +314,16 @@ export default function Chat({ route, navigation }) {
               isSelected && styles.selectedMessage
             ]}
           >
+            {!isCurrentUser && (
+              <Text style={styles.messageSender}>
+                {sender?.pseudo || item.senderName || 'User'}
+              </Text>
+            )}
             <Text style={styles.messageText}>{item.text}</Text>
             <View style={styles.messageFooter}>
               <Text style={styles.timestampText}>
                 {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
               </Text>
-              {isCurrentUser && <MessageStatus status={item.status} />}
             </View>
           </View>
           {isCurrentUser && <View style={styles.spacer} />}
@@ -369,10 +362,16 @@ export default function Chat({ route, navigation }) {
           </Menu>
 
           <FlatList
+            ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
             keyExtractor={item => item.id}
             contentContainerStyle={styles.messageList}
+            onContentSizeChange={() => {
+              if (flatListRef.current && messages.length > 0) {
+                flatListRef.current.scrollToEnd({ animated: false });
+              }
+            }}
           />
 
           <KeyboardAvoidingView
@@ -409,17 +408,16 @@ export default function Chat({ route, navigation }) {
                 onPress={pickImage}
               />
             </View>
-
             <TouchableOpacity
               style={styles.sendButton}
               onPress={handleSend}
-              disabled={msg.trim().length === 0}
+              disabled={msg.trim() === ''}
             >
-              {msg.trim().length > 0 ? (
-                <Ionicons name="send" size={20} color="#fff" />
-              ) : (
-                <MaterialCommunityIcons name="microphone" size={24} color="#fff" />
-              )}
+              <MaterialCommunityIcons
+                name="send"
+                size={24}
+                color="#fff"
+              />
             </TouchableOpacity>
           </KeyboardAvoidingView>
         </SafeAreaView>
@@ -431,119 +429,93 @@ export default function Chat({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    width: '100%',
-    height: '100%',
   },
   backgroundImage: {
-    opacity: 0.5,
+    opacity: 0.8,
   },
   innerContainer: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
-  headerContainer: {
+  headerTitle: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerAvatarContainer: {
-    position: 'relative',
-  },
   headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#128C7E',
-  },
-  imagePickerIcon: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    backgroundColor: '#25D366',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginRight: 10,
   },
   headerTextContainer: {
-    marginLeft: 10,
     justifyContent: 'center',
   },
-  headerTitle: {
+  headerTitleText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   headerSubtitle: {
     color: '#e0e0e0',
-    fontSize: 12,
+    fontSize: 14,
   },
   headerActions: {
     flexDirection: 'row',
   },
   messageList: {
     padding: 10,
-    paddingBottom: 70,
+    paddingBottom: 20,
   },
   messageRow: {
     flexDirection: 'row',
+    marginVertical: 3,
     alignItems: 'flex-end',
-    marginVertical: 2,
-    width: '100%',
   },
   messageAvatar: {
     marginRight: 5,
-    backgroundColor: '#128C7E',
-  },
-  spacer: {
-    width: 35,
   },
   messageBubble: {
     maxWidth: '75%',
-    padding: 8,
-    paddingVertical: 6,
-    borderRadius: 7.5,
-    minWidth: 80,
+    padding: 10,
+    borderRadius: 10,
+    elevation: 1,
   },
   currentUserMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#e7ffdb',
-    borderTopRightRadius: 0,
+    backgroundColor: '#dcf8c6',
     marginLeft: 'auto',
+    borderTopRightRadius: 0,
   },
   otherUserMessage: {
-    alignSelf: 'flex-start',
     backgroundColor: '#fff',
-    borderTopLeftRadius: 0,
     marginRight: 'auto',
+    borderTopLeftRadius: 0,
   },
   selectedMessage: {
-    backgroundColor: '#dcf8c6',
+    backgroundColor: '#b7f0a5',
+  },
+  messageSender: {
+    fontWeight: 'bold',
+    fontSize: 13,
+    color: '#075e54',
+    marginBottom: 3,
   },
   messageText: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#303030',
-    lineHeight: 20,
   },
   messageFooter: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    marginTop: 5,
     alignItems: 'center',
-    marginTop: 2,
   },
   timestampText: {
     fontSize: 11,
-    color: '#8696a0',
-    marginRight: 4,
+    color: '#7f8c8d',
+    marginRight: 5,
+  },
+  spacer: {
+    width: 35,
   },
   inputContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
-    padding: 5,
-    paddingHorizontal: 10,
+    padding: 10,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
   },
@@ -553,30 +525,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 25,
     alignItems: 'center',
-    marginRight: 8,
+    paddingHorizontal: 5,
   },
   input: {
     flex: 1,
     height: 40,
-    paddingHorizontal: 0,
     fontSize: 16,
-    color: '#303030',
+    color: '#333',
   },
   inputIcon: {
     margin: 0,
-    padding: 0,
   },
   sendButton: {
+    backgroundColor: '#075e54',
     width: 45,
     height: 45,
-    borderRadius: 23,
-    backgroundColor: '#00a884',
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 8,
   },
   menu: {
-    position: 'absolute',
-    top: 50,
-    left: 50,
+    marginTop: 50,
   },
 });
